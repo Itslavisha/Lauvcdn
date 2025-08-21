@@ -1,9 +1,13 @@
 import React, { useState } from 'react'
+import { getActor } from '../ic/agent'
+import storageUsIDL from '../ic/storage_us.idl'
 
 async function sha256(buf: Uint8Array) {
   const hash = await crypto.subtle.digest('SHA-256', buf)
   return new Uint8Array(hash)
 }
+
+const STORAGE_US_CANISTER_ID = import.meta.env.VITE_STORAGE_US_CANISTER_ID || '<update-after-deploy>'
 
 export default function UploadPage() {
   const [status, setStatus] = useState('')
@@ -13,6 +17,8 @@ export default function UploadPage() {
     if (!file) return
     setStatus('Uploading...')
 
+    const actor = await getActor(STORAGE_US_CANISTER_ID, storageUsIDL)
+
     const chunkSize = 1024 * 1024 * 2
     const chunks = Math.ceil(file.size / chunkSize)
     const fileId = `${file.name}-${Date.now()}`
@@ -21,11 +27,21 @@ export default function UploadPage() {
       const part = file.slice(i * chunkSize, Math.min(file.size, (i + 1) * chunkSize))
       const buf = new Uint8Array(await part.arrayBuffer())
       const hash = await sha256(buf)
-      // TODO: call storage_us actor: put_chunk(fileId, i, [...buf], [...hash])
+      await actor.put_chunk(fileId, i, [...buf], [...hash])
     }
 
-    // TODO: compute merkle root and call finalize_file(meta)
-    setStatus('Done (skeleton)')
+    // Minimal finalize (no merkle): use zero merkle_root for now
+    const meta = {
+      file_id: fileId,
+      total_size: BigInt(file.size),
+      chunk_size: chunkSize,
+      num_chunks: chunks,
+      merkle_root: [],
+      created_ns: BigInt(Date.now()) * 1_000_000n,
+    }
+    await actor.finalize_file(meta)
+
+    setStatus(`Done. file_id=${fileId}`)
   }
 
   return (
