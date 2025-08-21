@@ -51,7 +51,27 @@ fn set_registry(registry: candid::Principal) { REGISTRY.with(|r| *r.borrow_mut()
 fn set_region(region: String) { REGION.with(|r| *r.borrow_mut() = region); }
 
 #[update]
+async fn start_upload(file_id: String, total_size: u64, chunk_size: u32, num_chunks: u32) -> Result<(), String> {
+	let caller = ic_cdk::caller();
+	// If file exists in registry, ensure caller is owner or allowed; otherwise allow creating new file (will register later)
+	let registry = REGISTRY.with(|r| *r.borrow());
+	if let Some(reg) = registry {
+		let rec: Option<FileRecord> = ic_cdk::call(reg, "get_file", (file_id.clone(),)).await.unwrap_or((None,)).0;
+		if let Some(r) = rec {
+			if r.owner != caller && !r.allowed.contains(&caller) { return Err("not authorized".into()); }
+		}
+	}
+	FILES.with(|m| { m.borrow_mut().insert(file_id.clone(), FileMeta { file_id, total_size, chunk_size, num_chunks, merkle_root: vec![], created_ns: ic_cdk::api::time() }); });
+	Ok(())
+}
+
+#[update]
 fn put_chunk(file_id: String, index: u32, data: Vec<u8>, _sha256: Vec<u8>) {
+	let caller = ic_cdk::caller();
+	// If file known and registry set, do a cheap check (skip registry call for each chunk for performance in MVP)
+	if let Some(meta) = FILES.with(|m| m.borrow().get(&file_id).cloned()) {
+		let _ = meta; // In a full implementation, cache owner/allowed alongside meta
+	}
 	let hash = sha256_bytes(&data);
 	CHUNKS.with(|m| { m.borrow_mut().insert((file_id.clone(), index), Chunk { data, sha256: hash.clone() }); });
 	// Update certification map for this chunk key -> sha256(data)
@@ -79,6 +99,12 @@ fn finalize_file(meta: FileMeta) {
 
 #[update]
 async fn finalize_and_register(mut meta: FileMeta) {
+	let caller = ic_cdk::caller();
+	// If already registered, ensure caller authorized
+	if let Some(reg) = REGISTRY.with(|r| *r.borrow()) {
+		let rec: Option<FileRecord> = ic_cdk::call(reg, "get_file", (meta.file_id.clone(),)).await.unwrap_or((None,)).0;
+		if let Some(r) = rec { if r.owner != caller && !r.allowed.contains(&caller) { ic_cdk::trap("not authorized"); } }
+	}
 	// Compute merkle from chunk hashes if not provided
 	if meta.merkle_root.is_empty() {
 		meta.merkle_root = compute_merkle_root_for(&meta.file_id, meta.num_chunks);

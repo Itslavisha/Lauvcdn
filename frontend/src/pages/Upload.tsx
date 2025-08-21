@@ -15,7 +15,7 @@ export default function UploadPage() {
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setStatus('Uploading...')
+    setStatus('Preparing...')
 
     const actor = await getActor(STORAGE_US_CANISTER_ID, storageUsIDL, true)
 
@@ -23,6 +23,13 @@ export default function UploadPage() {
     const chunks = Math.ceil(file.size / chunkSize)
     const fileId = `${file.name}-${Date.now()}`
 
+    const res = await actor.start_upload(fileId, BigInt(file.size), chunkSize, chunks)
+    if ('err' in res) {
+      setStatus(`Error: ${res.err}`)
+      return
+    }
+
+    setStatus('Uploading...')
     for (let i = 0; i < chunks; i++) {
       const part = file.slice(i * chunkSize, Math.min(file.size, (i + 1) * chunkSize))
       const buf = new Uint8Array(await part.arrayBuffer())

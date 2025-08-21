@@ -7,4 +7,6 @@ service : {
   health: () -> (text) query;
   register_file: (FileRecord) -> ();
   get_file: (text) -> (opt FileRecord) query;
+  add_allowed: (text, principal) -> ();
+  remove_allowed: (text, principal) -> ();
 }

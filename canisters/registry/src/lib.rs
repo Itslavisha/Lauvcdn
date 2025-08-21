@@ -25,3 +25,23 @@ fn register_file(record: FileRecord) { FILES.with(|m| { m.borrow_mut().insert(re
 
 #[query]
 fn get_file(file_id: String) -> Option<FileRecord> { FILES.with(|m| m.borrow().get(&file_id).cloned()) }
+
+#[update]
+fn add_allowed(file_id: String, p: Principal) {
+	FILES.with(|m| {
+		let mut map = m.borrow_mut();
+		if let Some(rec) = map.get_mut(&file_id) {
+			if ic_cdk::caller() == rec.owner && !rec.allowed.contains(&p) { rec.allowed.push(p); }
+		}
+	});
+}
+
+#[update]
+fn remove_allowed(file_id: String, p: Principal) {
+	FILES.with(|m| {
+		let mut map = m.borrow_mut();
+		if let Some(rec) = map.get_mut(&file_id) {
+			if ic_cdk::caller() == rec.owner { rec.allowed.retain(|x| x != &p); }
+		}
+	});
+}
