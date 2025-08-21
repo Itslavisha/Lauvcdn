@@ -1,0 +1,8 @@
+[package]
+name = "lauv-sdk"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+ic-agent = "0.36"
+candid = "0.10"
