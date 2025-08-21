@@ -51,30 +51,38 @@ fn set_registry(registry: candid::Principal) { REGISTRY.with(|r| *r.borrow_mut()
 fn set_region(region: String) { REGION.with(|r| *r.borrow_mut() = region); }
 
 #[update]
-fn put_chunk(file_id: String, index: u32, data: Vec<u8>, sha256: Vec<u8>) {
-	CHUNKS.with(|m| { m.borrow_mut().insert((file_id, index), Chunk { data, sha256 }); });
-}
-
-#[update]
-fn finalize_file(meta: FileMeta) {
-	// Keep for compatibility (no registry call). Will compute merkle if not provided.
-	let computed_root = compute_merkle_root_for(&meta.file_id, meta.num_chunks);
-	let merkle_root = if meta.merkle_root.is_empty() { computed_root } else { meta.merkle_root.clone() };
-	let meta2 = FileMeta { merkle_root: merkle_root.clone(), ..meta };
-	FILES.with(|m| { m.borrow_mut().insert(meta2.file_id.clone(), meta2.clone()); });
+fn put_chunk(file_id: String, index: u32, data: Vec<u8>, _sha256: Vec<u8>) {
+	let hash = sha256_bytes(&data);
+	CHUNKS.with(|m| { m.borrow_mut().insert((file_id.clone(), index), Chunk { data, sha256: hash.clone() }); });
+	// Update certification map for this chunk key -> sha256(data)
 	CERT.with(|c| {
 		let mut cm = c.borrow_mut();
-		cm.insert(meta2.file_id.as_bytes().to_vec(), merkle_root);
+		cm.insert(chunk_key(&file_id, index), hash);
 		let root_hash: Hash = cm.root_hash();
 		set_certified_data(&root_hash);
 	});
 }
 
 #[update]
+fn finalize_file(meta: FileMeta) {
+	FILES.with(|m| { m.borrow_mut().insert(meta.file_id.clone(), meta.clone()); });
+	// Update file_id root entry as well (store overall merkle if provided)
+	if !meta.merkle_root.is_empty() {
+		CERT.with(|c| {
+			let mut cm = c.borrow_mut();
+			cm.insert(file_key(&meta.file_id), meta.merkle_root.clone());
+			let root_hash: Hash = cm.root_hash();
+			set_certified_data(&root_hash);
+		});
+	}
+}
+
+#[update]
 async fn finalize_and_register(mut meta: FileMeta) {
-	// Compute merkle, store and certify, then call registry.register_file
-	let merkle_root = if meta.merkle_root.is_empty() { compute_merkle_root_for(&meta.file_id, meta.num_chunks) } else { meta.merkle_root.clone() };
-	meta.merkle_root = merkle_root.clone();
+	// Compute merkle from chunk hashes if not provided
+	if meta.merkle_root.is_empty() {
+		meta.merkle_root = compute_merkle_root_for(&meta.file_id, meta.num_chunks);
+	}
 	finalize_file(meta.clone());
 	let registry = REGISTRY.with(|r| *r.borrow());
 	if let Some(reg) = registry {
@@ -85,7 +93,7 @@ async fn finalize_and_register(mut meta: FileMeta) {
 			file_id: meta.file_id,
 			owner: caller,
 			replicas: vec![Replica { canister: me, region }],
-			merkle_root,
+			merkle_root: meta.merkle_root,
 			allowed: vec![],
 			created_ns: meta.created_ns,
 		};
@@ -103,42 +111,56 @@ fn get_file_meta(file_id: String) -> Option<FileMeta> {
 	FILES.with(|m| m.borrow().get(&file_id).cloned())
 }
 
-// GET /file/{id}?chunk={i}
+// GET /file/{id}?chunk={i} or /file/{id}/download
 #[query(name = "http_request")]
 fn http_request(req: ic_cdk::api::management_canister::http_request::HttpRequest) -> ic_cdk::api::management_canister::http_request::HttpResponse {
 	use ic_cdk::api::management_canister::http_request::HttpResponse;
 	let url = req.url;
-	let parts: Vec<&str> = url.split('?').collect();
-	let (route, qs) = (parts.get(0).unwrap_or(&""), parts.get(1).unwrap_or(&""));
-	if route.starts_with("/file/") {
-		let file_id = route.trim_start_matches("/file/");
-		let mut chunk_idx: u32 = 0;
-		for kv in qs.split('&') {
-			let kvp: Vec<&str> = kv.split('=').collect();
-			if kvp.len() == 2 && kvp[0] == "chunk" {
-				if let Ok(v) = kvp[1].parse::<u32>() { chunk_idx = v; }
+	let mut headers: Vec<(String, String)> = vec![];
+	if let Some(cert) = data_certificate() { headers.push(("IC-Certificate".into(), format!("certificate=\"{}\"", base64::encode(cert)))); }
+	if let Some((file_id, rest)) = url.strip_prefix("/file/").map(|s| {
+		let mut it = s.splitn(2, '?');
+		let route = it.next().unwrap_or("");
+		let qs = it.next().unwrap_or("");
+		(route.to_string(), qs.to_string())
+	}) {
+		if file_id.ends_with("/download") {
+			let fid = file_id.trim_end_matches("/download");
+			if let Some(bytes) = assemble_file(fid) {
+				return HttpResponse { status_code: 200, headers: vec![("Content-Type".into(), "application/octet-stream".into())], body: bytes };
 			}
+			return HttpResponse { status_code: 404, headers: vec![], body: b"not found".to_vec() };
 		}
-		if let Some(ch) = CHUNKS.with(|m| m.borrow().get(&(file_id.to_string(), chunk_idx)).cloned()) {
-			let mut headers: Vec<(String, String)> = vec![("Content-Type".into(), "application/octet-stream".into())];
-			if let Some(cert) = data_certificate() {
-				let witness = CERT.with(|c| c.borrow().witness(file_id.as_bytes()));
-				let tree = serde_cbor::to_vec(&witness).unwrap_or_default();
-				let ic_cert = format!("certificate=\"{}\", tree=\"{}\"", base64::encode(cert), base64::encode(tree));
-				headers.push(("IC-Certificate".into(), ic_cert));
-			}
+		let mut chunk_idx: u32 = 0;
+		for kv in rest.split('&') {
+			let kvp: Vec<&str> = kv.split('=').collect();
+			if kvp.len() == 2 && kvp[0] == "chunk" { if let Ok(v) = kvp[1].parse::<u32>() { chunk_idx = v; } }
+		}
+		if let Some(ch) = CHUNKS.with(|m| m.borrow().get(&(file_id.clone(), chunk_idx)).cloned()) {
+			// Include tree witness for this chunk key
+			let witness = CERT.with(|c| c.borrow().witness(&chunk_key(&file_id, chunk_idx)));
+			let tree = serde_cbor::to_vec(&witness).unwrap_or_default();
+			headers.push(("IC-Certificate".into(), format!("tree=\"{}\"", base64::encode(tree))));
 			return HttpResponse { status_code: 200, headers, body: ch.data };
 		}
 		return HttpResponse { status_code: 404, headers: vec![], body: b"not found".to_vec() };
 	}
-	HttpResponse { status_code: 404, headers: vec![], body: b"not found".to_vec() }
+	ic_cdk::api::management_canister::http_request::HttpResponse { status_code: 404, headers: vec![], body: b"not found".to_vec() }
+}
+
+fn assemble_file(file_id: &str) -> Option<Vec<u8>> {
+	let meta = FILES.with(|m| m.borrow().get(file_id).cloned());
+	let meta = meta?;
+	let mut out: Vec<u8> = Vec::with_capacity(meta.total_size as usize);
+	for i in 0..meta.num_chunks { if let Some(ch) = CHUNKS.with(|m| m.borrow().get(&(file_id.to_string(), i)).cloned()) { out.extend_from_slice(&ch.data); } else { return None } }
+	Some(out)
 }
 
 fn compute_merkle_root_for(file_id: &str, num_chunks: u32) -> Vec<u8> {
 	let mut hashes: Vec<[u8;32]> = Vec::with_capacity(num_chunks as usize);
 	for i in 0..num_chunks {
 		if let Some(ch) = CHUNKS.with(|m| m.borrow().get(&(file_id.to_string(), i)).cloned()) {
-			hashes.push(hash_bytes(&ch.data));
+			hashes.push(to_arr(ch.sha256));
 		} else {
 			hashes.push([0u8;32]);
 		}
@@ -147,14 +169,13 @@ fn compute_merkle_root_for(file_id: &str, num_chunks: u32) -> Vec<u8> {
 	root.to_vec()
 }
 
-fn hash_bytes(data: &[u8]) -> [u8;32] {
+fn sha256_bytes(data: &[u8]) -> Vec<u8> {
 	let mut h = Sha256::new();
 	h.update(data);
-	let out = h.finalize();
-	let mut arr = [0u8;32];
-	arr.copy_from_slice(&out);
-	arr
+	h.finalize().to_vec()
 }
+
+fn to_arr(v: Vec<u8>) -> [u8;32] { let mut a=[0u8;32]; let n = v.len().min(32); a[..n].copy_from_slice(&v[..n]); a }
 
 fn merkle_root(mut leaves: Vec<[u8;32]>) -> [u8;32] {
 	if leaves.is_empty() { return [0u8;32]; }
@@ -162,9 +183,12 @@ fn merkle_root(mut leaves: Vec<[u8;32]>) -> [u8;32] {
 		let mut next: Vec<[u8;32]> = Vec::with_capacity((leaves.len()+1)/2);
 		for pair in leaves.chunks(2) {
 			let combined = if pair.len() == 2 { [pair[0], pair[1]].concat() } else { [pair[0], pair[0]].concat() };
-			next.push(hash_bytes(&combined));
+			next.push(to_arr(sha256_bytes(&combined)));
 		}
 		leaves = next;
 	}
 	leaves[0]
 }
+
+fn chunk_key(file_id: &str, idx: u32) -> Vec<u8> { format!("chunk:{}:{}", file_id, idx).into_bytes() }
+fn file_key(file_id: &str) -> Vec<u8> { format!("file:{}", file_id).into_bytes() }
