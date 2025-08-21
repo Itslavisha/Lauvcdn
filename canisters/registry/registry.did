@@ -1,0 +1,10 @@
+type Replica = record { canister: principal; region: text };
+type FileRecord = record {
+  file_id: text; owner: principal; replicas: vec Replica;
+  merkle_root: vec nat8; allowed: vec principal; created_ns: nat64;
+};
+service : {
+  health: () -> (text) query;
+  register_file: (FileRecord) -> ();
+  get_file: (text) -> (opt FileRecord) query;
+}

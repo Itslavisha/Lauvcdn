@@ -1,0 +1,7 @@
+/target/
+/.dfx/
+/node_modules/
+/frontend/node_modules/
+**/*.wasm
+.DS_Store
+*.lock

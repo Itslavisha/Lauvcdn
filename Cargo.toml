@@ -1,0 +1,26 @@
+[workspace]
+members = [
+    "canisters/registry",
+    "canisters/router",
+    "canisters/storage_us",
+    "canisters/storage_eu",
+    "canisters/billing",
+    "canisters/analytics",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0"
+authors = ["Lauv Labs"]
+
+[workspace.dependencies]
+candid = "0.10"
+ic-cdk = "0.13"
+ic-cdk-macros = "0.13"
+serde = { version = "1", features = ["derive"] }
+ic-stable-structures = "0.6"
+serde_bytes = "0.11"
+sha2 = "0.10"
+hex = "0.4"
+

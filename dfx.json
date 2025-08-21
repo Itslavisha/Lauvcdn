@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "canisters": {
+    "registry": {
+      "type": "custom",
+      "candid": "canisters/registry/registry.did",
+      "wasm": "target/wasm32-unknown-unknown/release/registry.wasm",
+      "build": "cargo build --target wasm32-unknown-unknown --release --package registry"
+    },
+    "router": {
+      "type": "custom",
+      "candid": "canisters/router/router.did",
+      "wasm": "target/wasm32-unknown-unknown/release/router.wasm",
+      "build": "cargo build --target wasm32-unknown-unknown --release --package router"
+    },
+    "storage_us": {
+      "type": "custom",
+      "candid": "canisters/storage_us/storage.did",
+      "wasm": "target/wasm32-unknown-unknown/release/storage_us.wasm",
+      "build": "cargo build --target wasm32-unknown-unknown --release --package storage_us"
+    },
+    "storage_eu": {
+      "type": "custom",
+      "candid": "canisters/storage_eu/storage.did",
+      "wasm": "target/wasm32-unknown-unknown/release/storage_eu.wasm",
+      "build": "cargo build --target wasm32-unknown-unknown --release --package storage_eu"
+    },
+    "billing": {
+      "type": "custom",
+      "candid": "canisters/billing/billing.did",
+      "wasm": "target/wasm32-unknown-unknown/release/billing.wasm",
+      "build": "cargo build --target wasm32-unknown-unknown --release --package billing"
+    },
+    "analytics": {
+      "type": "custom",
+      "candid": "canisters/analytics/analytics.did",
+      "wasm": "target/wasm32-unknown-unknown/release/analytics.wasm",
+      "build": "cargo build --target wasm32-unknown-unknown --release --package analytics"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:4943",
+      "type": "ephemeral"
+    }
+  }
+}
+
