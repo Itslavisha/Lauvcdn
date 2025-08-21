@@ -17,7 +17,7 @@ export default function UploadPage() {
     if (!file) return
     setStatus('Uploading...')
 
-    const actor = await getActor(STORAGE_US_CANISTER_ID, storageUsIDL)
+    const actor = await getActor(STORAGE_US_CANISTER_ID, storageUsIDL, true)
 
     const chunkSize = 1024 * 1024 * 2
     const chunks = Math.ceil(file.size / chunkSize)
@@ -30,7 +30,6 @@ export default function UploadPage() {
       await actor.put_chunk(fileId, i, [...buf], [...hash])
     }
 
-    // Minimal finalize (no merkle): use zero merkle_root for now
     const meta = {
       file_id: fileId,
       total_size: BigInt(file.size),
@@ -39,7 +38,7 @@ export default function UploadPage() {
       merkle_root: [],
       created_ns: BigInt(Date.now()) * 1_000_000n,
     }
-    await actor.finalize_file(meta)
+    await actor.finalize_and_register(meta)
 
     setStatus(`Done. file_id=${fileId}`)
   }
