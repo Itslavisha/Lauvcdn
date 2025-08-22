@@ -4,15 +4,21 @@ import { AuthClient } from '@dfinity/auth-client'
 export async function getIdentity() {
   const auth = await AuthClient.create()
   if (!(await auth.isAuthenticated())) {
-    await auth.login({ identityProvider: 'https://identity.ic0.app' })
+    await auth.login({ 
+      identityProvider: process.env.NODE_ENV === 'development' 
+        ? `http://127.0.0.1:4943/?canisterId=${process.env.INTERNET_IDENTITY_CANISTER_ID}`
+        : 'https://identity.ic0.app'
+    })
   }
   return auth.getIdentity()
 }
 
 export async function getAgent(authenticated = false) {
   const identity = authenticated ? await getIdentity() : undefined
-  const agent = new HttpAgent({ identity })
-  if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') {
+  const host = import.meta.env.VITE_HOST || 'http://127.0.0.1:4943'
+  const agent = new HttpAgent({ identity, host })
+  
+  if (import.meta.env.VITE_DFX_NETWORK === 'local') {
     await agent.fetchRootKey()
   }
   return agent

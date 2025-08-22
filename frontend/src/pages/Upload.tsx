@@ -7,7 +7,7 @@ async function sha256(buf: Uint8Array) {
   return new Uint8Array(hash)
 }
 
-const STORAGE_US_CANISTER_ID = import.meta.env.VITE_STORAGE_US_CANISTER_ID || '<update-after-deploy>'
+const STORAGE_US_CANISTER_ID = import.meta.env.VITE_STORAGE_US_CANISTER_ID || 'rdmx6-jaaaa-aaaaa-aaadq-cai'
 
 export default function UploadPage() {
   const [status, setStatus] = useState('')

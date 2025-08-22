@@ -15,6 +15,11 @@ thread_local! {
 	static USAGE: RefCell<HashMap<Principal, Usage>> = RefCell::new(HashMap::new());
 }
 
+#[init]
+fn init() {
+    // Initialize billing system
+}
+
 #[query]
 fn health() -> String { "ok".to_string() }
 

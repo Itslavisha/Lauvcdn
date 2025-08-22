@@ -22,6 +22,11 @@ thread_local! {
 	static FILES: RefCell<HashMap<String, FileMeta>> = RefCell::new(HashMap::new());
 }
 
+#[init]
+fn init() {
+    // Initialize storage canister
+}
+
 #[query]
 fn health() -> String { "ok".to_string() }
 

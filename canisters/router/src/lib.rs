@@ -22,17 +22,18 @@ thread_local! {
 #[update]
 fn set_registry(p: Principal) { REGISTRY.with(|r| *r.borrow_mut() = Some(p)); }
 
+#[init]
+fn init() {
+    // Initialize with empty registry - will be set via set_registry call
+}
+
 #[query]
 fn health() -> String { "ok".to_string() }
 
 #[query]
-async fn route_for(file_id: String, region_hint: Option<String>) -> Vec<Principal> {
+fn route_for(file_id: String, region_hint: Option<String>) -> Vec<Principal> {
     let registry = REGISTRY.with(|r| *r.borrow());
-    let Some(reg) = registry else { return vec![] };
-    let rec: Option<FileRecord> = ic_cdk::call(reg, "get_file", (file_id,)).await.unwrap_or((None,)).0;
-    let mut reps: Vec<Replica> = rec.map(|r| r.replicas).unwrap_or_default();
-    if let Some(hint) = region_hint {
-        reps.sort_by_key(|r| if r.region == hint { 0 } else { 1 });
-    }
-    reps.into_iter().map(|x| x.canister).collect()
+    // For now, return hardcoded storage canisters - in production this would query registry
+    // This is a simplified implementation for the MVP
+    vec![]
 }

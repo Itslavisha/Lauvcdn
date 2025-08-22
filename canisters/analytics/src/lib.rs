@@ -5,6 +5,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, CandidType, Deserialize, Serialize)]
 pub struct Point { pub ts_ns: u64, pub value: u64 }
 
+#[init]
+fn init() {
+    // Initialize analytics system
+}
+
 #[query]
 fn health() -> String { "ok".to_string() }
 

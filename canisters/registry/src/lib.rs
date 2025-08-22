@@ -17,6 +17,11 @@ thread_local! {
 	static FILES: RefCell<HashMap<String, FileRecord>> = RefCell::new(HashMap::new());
 }
 
+#[init]
+fn init() {
+    // Initialize registry
+}
+
 #[query]
 fn health() -> String { "ok".to_string() }
 

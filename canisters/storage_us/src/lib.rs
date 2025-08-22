@@ -41,6 +41,12 @@ thread_local! {
 	static REGION: RefCell<String> = RefCell::new("us".to_string());
 }
 
+#[init]
+fn init() {
+    // Initialize with default region
+    REGION.with(|r| *r.borrow_mut() = "us".to_string());
+}
+
 #[query]
 fn health() -> String { "ok".to_string() }
 

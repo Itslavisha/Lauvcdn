@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-const STORAGE_US_CANISTER_ID = import.meta.env.VITE_STORAGE_US_CANISTER_ID || '<update-after-deploy>'
+const STORAGE_US_CANISTER_ID = import.meta.env.VITE_STORAGE_US_CANISTER_ID || 'rdmx6-jaaaa-aaaaa-aaadq-cai'
 const BASE = `https://${STORAGE_US_CANISTER_ID}.localhost:4943`
 
 export default function DownloadPage() {
