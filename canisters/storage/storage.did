@@ -1,8 +1,16 @@
-@@ .. @@
- service : {
-   health: () -> (text) query;
-   set_registry: (principal) -> ();
--  set_region: (text) -> ();
-   start_upload: (text, nat64, nat32, nat32) -> (variant { ok; err: text });
-   put_chunk: (text, nat32, vec nat8, vec nat8) -> ();
-   finalize_file: (FileMeta) -> ();
+type Chunk = record { data: vec nat8; sha256: vec nat8 };
+type FileMeta = record {
+  file_id: text; total_size: nat64; chunk_size: nat32; num_chunks: nat32;
+  merkle_root: vec nat8; created_ns: nat64;
+};
+type Result = variant { ok; err: text };
+service : {
+  health: () -> (text) query;
+  set_registry: (principal) -> ();
+  start_upload: (text, nat64, nat32, nat32) -> (Result);
+  put_chunk: (text, nat32, vec nat8, vec nat8) -> ();
+  finalize_file: (FileMeta) -> ();
+  finalize_and_register: (FileMeta) -> ();
+  get_chunk: (text, nat32) -> (opt Chunk) query;
+  get_file_meta: (text) -> (opt FileMeta) query;
+}

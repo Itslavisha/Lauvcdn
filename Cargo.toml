@@ -22,4 +22,3 @@ hex = "0.4"
 ic-certified-map = "0.4"
 base64 = "0.21"
 serde_cbor = "0.11"
-
