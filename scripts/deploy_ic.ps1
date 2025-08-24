@@ -7,19 +7,8 @@ param(
 
 dfx deploy --network $Network registry
 
-dfx deploy --network $Network storage_us
+dfx deploy --network $Network storage
 
-dfx deploy --network $Network storage_eu
-
-dfx deploy --network $Network router
-
-dfx deploy --network $Network billing
-
-dfx deploy --network $Network analytics
-
-# Initialize billing admin (first time)
-try {
-    dfx canister --network $Network call billing init "(principal '$AdminPrincipal')"
-} catch {
-    Write-Host "Billing init may already be set: $_"
-}
+# Configure storage
+$REG = dfx canister --network $Network id registry
+dfx canister --network $Network call storage set_registry "(principal '$REG')"

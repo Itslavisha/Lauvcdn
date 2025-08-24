@@ -19,8 +19,8 @@ try {
   throw
 }
 
-$env:VITE_STORAGE_US_CANISTER_ID = $json.storage_us
-Write-Host "Using STORAGE_US_CANISTER_ID=$($env:VITE_STORAGE_US_CANISTER_ID)"
+$env:VITE_STORAGE_CANISTER_ID = $json.storage
+Write-Host "Using STORAGE_CANISTER_ID=$($env:VITE_STORAGE_CANISTER_ID)"
 
 Push-Location frontend
 npm i

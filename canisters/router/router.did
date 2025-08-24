@@ -1,4 +1,0 @@
-service : {
-  health: () -> (text) query;
-  route_for: (text, opt text) -> (vec principal) query;
-}

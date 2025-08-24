@@ -1,11 +1,7 @@
 [workspace]
 members = [
     "canisters/registry",
-    "canisters/router",
-    "canisters/storage_us",
-    "canisters/storage_eu",
-    "canisters/billing",
-    "canisters/analytics",
+    "canisters/storage",
 ]
 resolver = "2"
 

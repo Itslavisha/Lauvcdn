@@ -12,7 +12,6 @@ export default ({ IDL }) => {
   return IDL.Service({
     health: IDL.Func([], [IDL.Text], ['query']),
     set_registry: IDL.Func([IDL.Principal], [], []),
-    set_region: IDL.Func([IDL.Text], [], []),
     start_upload: IDL.Func([IDL.Text, IDL.Nat64, IDL.Nat32, IDL.Nat32], [Result], []),
     put_chunk: IDL.Func([IDL.Text, IDL.Nat32, IDL.Vec(IDL.Nat8), IDL.Vec(IDL.Nat8)], [], []),
     finalize_file: IDL.Func([FileMeta], [], []),

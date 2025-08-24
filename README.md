@@ -11,6 +11,7 @@ This repo contains ICP canisters (Rust), a React frontend, and SDKs for Lauv's o
 - Frontend (once scaffolded): `cd frontend && npm i && npm run dev`
 
 ## Canisters
-- registry, router, storage_us, storage_eu, billing, analytics
+- registry: File metadata and permissions
+- storage: File storage with chunking and HTTP access
 
 See `scripts/deploy_local.ps1` for commands and `dfx.json` for canister config.

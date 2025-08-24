@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
 import { getActor } from '../ic/agent'
-import storageUsIDL from '../ic/storage_us.idl'
+import storageIDL from '../ic/storage.idl'
 
 async function sha256(buf: Uint8Array) {
   const hash = await crypto.subtle.digest('SHA-256', buf)
   return new Uint8Array(hash)
 }
 
-const STORAGE_US_CANISTER_ID = import.meta.env.VITE_STORAGE_US_CANISTER_ID || 'rdmx6-jaaaa-aaaaa-aaadq-cai'
+const STORAGE_CANISTER_ID = import.meta.env.VITE_STORAGE_CANISTER_ID || 'rdmx6-jaaaa-aaaaa-aaadq-cai'
 
 export default function UploadPage() {
   const [status, setStatus] = useState('')
@@ -21,7 +21,7 @@ export default function UploadPage() {
     setStatus('Preparing...')
 
     try {
-      const actor = await getActor(STORAGE_US_CANISTER_ID, storageUsIDL, false)
+      const actor = await getActor(STORAGE_CANISTER_ID, storageIDL, false)
 
       const chunkSize = 1024 * 1024 * 2
       const chunks = Math.ceil(file.size / chunkSize)

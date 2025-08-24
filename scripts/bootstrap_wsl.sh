@@ -28,14 +28,10 @@ dfx start --clean --background
 
 dfx deploy registry
 
-dfx deploy storage_us
-
-dfx deploy router
+dfx deploy storage
 
 REG=$(dfx canister id registry)
-dfx canister call storage_us set_registry "(principal \"$REG\")"
-dfx canister call storage_us set_region '("us")'
-dfx canister call router set_registry "(principal \"$REG\")"
+dfx canister call storage set_registry "(principal \"$REG\")"
 
 # Output canister IDs as JSON
-jq -n --arg storage_us "$(dfx canister id storage_us)" '{storage_us: $storage_us}'
+jq -n --arg storage "$(dfx canister id storage)" '{storage: $storage}'

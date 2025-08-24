@@ -1,9 +1,0 @@
-type Point = record { ts_ns: nat64; value: nat64 };
-service : {
-  health: () -> (text) query;
-  ingest: (vec nat8) -> ();
-  rps: (principal, nat64, nat64, nat64) -> (vec Point) query;
-  bandwidth: (principal, nat64, nat64, nat64) -> (vec Point) query;
-  heatmap: (principal, nat64, nat64) -> (vec record { region: text; count: nat64 }) query;
-  hit_ratio: (principal, nat64, nat64, nat64) -> (vec Point) query;
-}

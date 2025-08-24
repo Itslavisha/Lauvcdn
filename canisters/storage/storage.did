@@ -1,0 +1,8 @@
+@@ .. @@
+ service : {
+   health: () -> (text) query;
+   set_registry: (principal) -> ();
+-  set_region: (text) -> ();
+   start_upload: (text, nat64, nat32, nat32) -> (variant { ok; err: text });
+   put_chunk: (text, nat32, vec nat8, vec nat8) -> ();
+   finalize_file: (FileMeta) -> ();

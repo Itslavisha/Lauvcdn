@@ -1,9 +1,0 @@
-type Account = record { user: principal; credits_nanos: nat; plan: text };
-type Usage = record { user: principal; requests: nat64; egress_bytes: nat64; ingress_bytes: nat64 };
-service : {
-  health: () -> (text) query;
-  record_usage: (principal, nat64, nat64, nat64) -> ();
-  recharge: (principal, nat) -> ();
-  account: (principal) -> (opt Account) query;
-  usage: (principal) -> (opt Usage) query;
-}
